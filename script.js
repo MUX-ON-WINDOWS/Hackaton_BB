@@ -103,7 +103,11 @@ function open360Viewer(location) {
             <div id="video-container">
                 <video id="intro-video" src="https://www.w3schools.com/html/mov_bbb.mp4" controls autoplay></video>
             </div>
-            <div id="viewer" style="display:none; position:relative;"></div>
+            <div id="viewer" style="display:none; position:relative;">
+                <div id="choice-btns" style="display:none; position:absolute; top:50%; left:0; width:100%; transform:translateY(-50%); z-index:20; pointer-events:none;">
+                    
+                </div>
+            </div>
             <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
             <script>
                 let currentScene = 'start';
