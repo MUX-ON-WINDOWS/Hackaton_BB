@@ -295,6 +295,25 @@ function open360Viewer(location) {
                             }
                         }
                     });
+
+                    // Remove old shelter icon if it exists
+                    if (scene.getObjectByName('shelterIcon')) scene.remove(scene.getObjectByName('shelterIcon'));
+
+                    if (imagePath.includes('Right') || imagePath.includes('Left')) {
+                        const loader = new THREE.TextureLoader();
+                        loader.load('img/iconShelter.png', function(texture) {
+                            const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+                            const sprite = new THREE.Sprite(material);
+                            if (imagePath.includes('Right')) {
+                                sprite.position.set(300, 40, -100); // Position for Right scene
+                            } else {
+                                sprite.position.set(-300, 40, -100); // Position for Left scene
+                            }
+                            sprite.scale.set(30, 30, 1);
+                            sprite.name = 'shelterIcon';
+                            scene.add(sprite);
+                        });
+                    }
                 }
 
                 // --- Video to 360 transition ---
