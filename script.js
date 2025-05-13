@@ -21,9 +21,9 @@ const locations = {
         coordinates: [50.45466, 30.5238],
         videoUrl: 'https://example.com/kyiv-360.mp4' // Replace with actual 360° video URL
     },
-    odesa: {
-        name: 'Odesa',
-        coordinates: [46.4825, 30.7233],
+    charkov: {
+        name: 'Charkov',
+        coordinates: [49.9935, 36.2304],
         imageUrl: 'img/Odesa, Ukraine 360.png' // Use local 360° photo
     }
 };
@@ -48,13 +48,13 @@ Object.values(locations).forEach(location => {
 function open360Viewer(location) {
     const viewerWindow = window.open('', '_blank');
     let viewerContent;
-    if (location.name === 'Odesa') {
+    if (location.name === 'Charkov') {
         // Odesa storyline: video -> 360 choice -> 360 left/right
         viewerContent = `
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Odesa - Explore</title>
+            <title>Charkov - Explore</title>
             <style>
                 body { margin: 0; overflow: hidden; background: #000; }
                 #viewer, #video-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; }
@@ -98,6 +98,7 @@ function open360Viewer(location) {
                     100% { filter: blur(12px); transform: scale(1.2); opacity: 0; }
                 }
             </style>
+            <script src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'></script>
         </head>
         <body>
             <div id="video-container">
@@ -108,7 +109,6 @@ function open360Viewer(location) {
                     
                 </div>
             </div>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
             <script>
                 let currentScene = 'start';
                 const viewer = document.getElementById('viewer');
@@ -193,23 +193,15 @@ function open360Viewer(location) {
                         camera.position.y = 100 * Math.cos(phi);
                         camera.position.z = 100 * Math.sin(phi) * Math.sin(theta);
                         camera.lookAt(scene.position);
-
-                        // Make sure the buttons exist before calling lookAt
                         if (scene.getObjectByName('leftBtn3D')) {
                             scene.getObjectByName('leftBtn3D').lookAt(camera.position);
                         }
                         if (scene.getObjectByName('rightBtn3D')) {
                             scene.getObjectByName('rightBtn3D').lookAt(camera.position);
                         }
-
                         renderer.render(scene, camera);
                     }
                     animate();
-                    window.onresize = function() {
-                        camera.aspect = window.innerWidth / window.innerHeight;
-                        camera.updateProjectionMatrix();
-                        renderer.setSize(window.innerWidth, window.innerHeight);
-                    };
 
                     // Remove old buttons if they exist
                     if (scene.getObjectByName('leftBtn3D')) scene.remove(scene.getObjectByName('leftBtn3D'));
@@ -285,13 +277,21 @@ function open360Viewer(location) {
                         // Convert mouse to normalized device coordinates
                         mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
                         mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+                        // Collect clickable objects
+                        const clickableObjects = [
+                            scene.getObjectByName('leftBtn3D'),
+                            scene.getObjectByName('rightBtn3D'),
+                            scene.getObjectByName('shelterIcon')
+                        ].filter(Boolean);
                         raycaster.setFromCamera(mouse, camera);
-                        const intersects = raycaster.intersectObjects([scene.getObjectByName('leftBtn3D'), scene.getObjectByName('rightBtn3D')].filter(Boolean));
+                        const intersects = raycaster.intersectObjects(clickableObjects);
                         if (intersects.length > 0) {
                             if (intersects[0].object.name === 'leftBtn3D') {
                                 show360('img/StreetViewChoiceLeft.jpg', true);
                             } else if (intersects[0].object.name === 'rightBtn3D') {
                                 show360('img/StreetViewChoiceRight.jpg', true);
+                            } else if (intersects[0].object.name === 'shelterIcon') {
+                                show360('img/bombShelterInside.png', true);
                             }
                         }
                     });
@@ -311,7 +311,7 @@ function open360Viewer(location) {
                             if (imagePath.includes('Right')) {
                                 sprite.position.set(100, -30, -400); // Closer to camera
                             } else {
-                                sprite.position.set(-100, 0, -200); // Closer to camera
+                                sprite.position.set(180, -30, 420); // Closer to camera
                             }
                             sprite.scale.set(50, 50, 1); // Larger scale
                             sprite.name = 'shelterIcon';
@@ -339,11 +339,11 @@ function open360Viewer(location) {
                 };
 
                 // --- Button logic ---
-                leftBtn.onclick = function() {
+                if (leftBtn) leftBtn.onclick = function() {
                     if (animatingTransition) return;
                     show360('img/StreetViewChoiceLeft.jpg', true);
                 };
-                rightBtn.onclick = function() {
+                if (rightBtn) rightBtn.onclick = function() {
                     if (animatingTransition) return;
                     show360('img/StreetViewChoiceRight.jpg', true);
                 };
