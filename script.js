@@ -6,6 +6,93 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
 }).addTo(map);
 
+// VR state management
+let isVRMode = false;
+let vrRenderer = null;
+let vrScene = null;
+let vrCamera = null;
+let vrControls = null;
+
+// Check if the page is served over HTTPS
+const isSecure = window.location.protocol === 'https:';
+const vrToggle = document.getElementById('vrToggle');
+
+// Disable VR button if not on HTTPS
+if (!isSecure) {
+    vrToggle.disabled = true;
+    vrToggle.title = 'VR mode requires HTTPS';
+}
+
+// VR Toggle button click handler
+vrToggle.addEventListener('click', () => {
+    if (!isSecure) return;
+    
+    isVRMode = !isVRMode;
+    vrToggle.textContent = isVRMode ? 'Disable VR' : 'Enable VR';
+    vrToggle.classList.toggle('active');
+    
+    if (isVRMode) {
+        initializeVR();
+    } else {
+        cleanupVR();
+    }
+});
+
+function initializeVR() {
+    if (!vrRenderer) {
+        vrRenderer = new THREE.WebGLRenderer({ antialias: true });
+        vrRenderer.setPixelRatio(window.devicePixelRatio);
+        vrRenderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(vrRenderer.domElement);
+        
+        vrScene = new THREE.Scene();
+        vrCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // Add VR controls
+        vrControls = new THREE.VRControls(vrCamera);
+        vrControls.standing = true;
+        
+        // Add VR button
+        document.body.appendChild(THREE.VRButton.createButton(vrRenderer));
+        
+        // Add ambient light
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        vrScene.add(ambientLight);
+        
+        // Add directional light
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(0, 1, 0);
+        vrScene.add(directionalLight);
+    }
+    
+    // Start VR animation loop
+    animateVR();
+}
+
+function cleanupVR() {
+    if (vrRenderer) {
+        document.body.removeChild(vrRenderer.domElement);
+        vrRenderer = null;
+        vrScene = null;
+        vrCamera = null;
+        vrControls = null;
+    }
+}
+
+function animateVR() {
+    if (!isVRMode) return;
+    
+    requestAnimationFrame(animateVR);
+    
+    if (vrControls) {
+        vrControls.update();
+    }
+    
+    if (vrRenderer && vrScene && vrCamera) {
+        vrRenderer.render(vrScene, vrCamera);
+    }
+}
+
 // Custom marker icon
 const markerIcon = L.divIcon({
     className: 'custom-marker',
@@ -49,7 +136,6 @@ function open360Viewer(location) {
     const viewerWindow = window.open('', '_blank');
     let viewerContent;
     if (location.name === 'Charkov') {
-        // Odesa storyline: video -> 360 choice -> 360 left/right
         viewerContent = `
         <!DOCTYPE html>
         <html>
@@ -68,7 +154,7 @@ function open360Viewer(location) {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    pointer-events: none; /* allow buttons to be clickable, but not the container */
+                    pointer-events: none;
                     z-index: 20;
                     padding: 0 5vw;
                     transform: translateY(-50%);
@@ -97,19 +183,128 @@ function open360Viewer(location) {
                     0% { filter: blur(0px); transform: scale(1); }
                     100% { filter: blur(12px); transform: scale(1.2); opacity: 0; }
                 }
+                #vrToggle {
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    padding: 10px 20px;
+                    background-color: #2c3e50;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-family: 'Open Sans', sans-serif;
+                    font-size: 14px;
+                    z-index: 1000;
+                }
+                #vrToggle.active {
+                    background-color: #e74c3c;
+                }
+                #vrToggle:disabled {
+                    background-color: #95a5a6;
+                    cursor: not-allowed;
+                }
             </style>
             <script src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'></script>
+            <script src='https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/vr/VRButton.js'></script>
         </head>
         <body>
             <div id="video-container">
                 <video id="intro-video" src="https://www.w3schools.com/html/mov_bbb.mp4" controls autoplay></video>
             </div>
-            <div id="viewer" style="display:none; position:relative;">
-                <div id="choice-btns" style="display:none; position:absolute; top:50%; left:0; width:100%; transform:translateY(-50%); z-index:20; pointer-events:none;">
-                    
-                </div>
+            <div id="viewer" style="display:none;">
+                <div id="choice-btns" style="display:none;"></div>
             </div>
+            <button id="vrToggle" disabled>Enable VR</button>
             <script>
+                // VR state management
+                let isVRMode = false;
+                let vrRenderer = null;
+                let vrScene = null;
+                let vrCamera = null;
+                let vrControls = null;
+                
+                // Check if the page is served over HTTPS
+                const isSecure = window.location.protocol === 'https:';
+                const vrToggle = document.getElementById('vrToggle');
+                
+                // Enable VR button if on HTTPS
+                if (isSecure) {
+                    vrToggle.disabled = false;
+                } else {
+                    vrToggle.title = 'VR mode requires HTTPS';
+                }
+                
+                // VR Toggle button click handler
+                vrToggle.addEventListener('click', () => {
+                    if (!isSecure) return;
+                    
+                    isVRMode = !isVRMode;
+                    vrToggle.textContent = isVRMode ? 'Disable VR' : 'Enable VR';
+                    vrToggle.classList.toggle('active');
+                    
+                    if (isVRMode) {
+                        initializeVR();
+                    } else {
+                        cleanupVR();
+                    }
+                });
+                
+                function initializeVR() {
+                    if (!vrRenderer) {
+                        vrRenderer = new THREE.WebGLRenderer({ antialias: true });
+                        vrRenderer.setPixelRatio(window.devicePixelRatio);
+                        vrRenderer.setSize(window.innerWidth, window.innerHeight);
+                        document.body.appendChild(vrRenderer.domElement);
+                        
+                        vrScene = new THREE.Scene();
+                        vrCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                        
+                        // Add VR controls
+                        vrControls = new THREE.VRControls(vrCamera);
+                        vrControls.standing = true;
+                        
+                        // Add VR button
+                        document.body.appendChild(THREE.VRButton.createButton(vrRenderer));
+                        
+                        // Add ambient light
+                        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                        vrScene.add(ambientLight);
+                        
+                        // Add directional light
+                        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+                        directionalLight.position.set(0, 1, 0);
+                        vrScene.add(directionalLight);
+                    }
+                    
+                    // Start VR animation loop
+                    animateVR();
+                }
+                
+                function cleanupVR() {
+                    if (vrRenderer) {
+                        document.body.removeChild(vrRenderer.domElement);
+                        vrRenderer = null;
+                        vrScene = null;
+                        vrCamera = null;
+                        vrControls = null;
+                    }
+                }
+                
+                function animateVR() {
+                    if (!isVRMode) return;
+                    
+                    requestAnimationFrame(animateVR);
+                    
+                    if (vrControls) {
+                        vrControls.update();
+                    }
+                    
+                    if (vrRenderer && vrScene && vrCamera) {
+                        vrRenderer.render(vrScene, vrCamera);
+                    }
+                }
+                
                 let currentScene = 'start';
                 const viewer = document.getElementById('viewer');
                 const btns = document.getElementById('choice-btns');
@@ -349,8 +544,7 @@ function open360Viewer(location) {
                 };
             </script>
         </body>
-        </html>
-        `;
+        </html>`;
     } else {
         // 360° video (Kyiv)
         viewerContent = `
@@ -443,8 +637,7 @@ function open360Viewer(location) {
                 });
             </script>
         </body>
-        </html>
-        `;
+        </html>`;
     }
     viewerWindow.document.write(viewerContent);
     viewerWindow.document.close();

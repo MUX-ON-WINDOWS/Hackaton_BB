@@ -84,4 +84,33 @@ body {
     #map {
         height: calc(100vh - 100px);
     }
+}
+
+.vr-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 10px 20px;
+    background-color: #2c3e50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 14px;
+    z-index: 1000;
+    transition: background-color 0.3s ease;
+}
+
+.vr-toggle:hover {
+    background-color: #34495e;
+}
+
+.vr-toggle.active {
+    background-color: #e74c3c;
+}
+
+.vr-toggle:disabled {
+    background-color: #95a5a6;
+    cursor: not-allowed;
 } 
