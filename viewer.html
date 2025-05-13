@@ -167,5 +167,9 @@
     window.VRButton = VRButton;
     </script>
     <script src="viewer.js"></script>
+    <div id="imageOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:2000;">
+      <img id="overlayImg" src="notes/note1.png" style="max-width:90vw; max-height:90vh; border-radius:12px; box-shadow:0 4px 24px rgba(0,0,0,0.5);">
+      <button id="closeOverlayBtn" style="position:absolute; top:30px; right:30px; font-size:2rem; background:#fff; border:none; border-radius:50%; width:48px; height:48px; cursor:pointer;">&times;</button>
+    </div>
 </body>
 </html> 

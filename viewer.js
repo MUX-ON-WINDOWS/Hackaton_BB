@@ -70,6 +70,9 @@ const btns = document.getElementById('choice-btns');
 // Audio element for training center
 let trainingAudio = null;
 
+// Audio element for bomb shelter
+let bombShelterAudio = null;
+
 // Font loader for 3D text
 const fontLoader = new THREE.FontLoader();
 let trainingTextMeshes = [];
@@ -90,25 +93,6 @@ function addTrainingTextsAndButton() {
     trainingTextMeshes.forEach(mesh => scene.remove(mesh));
     trainingTextMeshes = [];
     if (trainingButton) scene.remove(trainingButton); trainingButton = null;
-    // Add 3 text blocks
-    const texts = [
-        { text: 'Aantal drones per dag', position: [-100, 100, -470] },
-        { text: '80%', position: [-200, 80, -400] }
-    ];
-    texts.forEach((t, i) => {
-        const textGeo = new THREE.TextGeometry(t.text, {
-            font: loadedFont,
-            size: 18,
-            height: 2,
-            curveSegments: 40
-        });
-        const textMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-        const textMesh = new THREE.Mesh(textGeo, textMat);
-        textMesh.position.set(...t.position);
-        textMesh.name = `trainingText${i+1}`;
-        scene.add(textMesh);
-        trainingTextMeshes.push(textMesh);
-    });
     // Add 3D button (plane with text)
     const btnWidth = 300, btnHeight = 400;
     const btnGeometry = new THREE.PlaneGeometry(btnWidth, btnHeight);
@@ -116,7 +100,7 @@ function addTrainingTextsAndButton() {
     btnCanvas.width = 256; btnCanvas.height = 64;
     const ctx = btnCanvas.getContext('2d');
     // ctx.fillStyle = '#2c3e50';
-    ctx.fillRect(0, 0, btnCanvas.width, btnCanvas.height);
+    // ctx.fillRect(0, 0, btnCanvas.width, btnCanvas.height);
     // ctx.font = '32px Arial';
     // ctx.fillStyle = 'white';
     // ctx.textAlign = 'center';
@@ -223,7 +207,8 @@ function addGoHomeButton() {
     const btnTexture = new THREE.CanvasTexture(btnCanvas);
     const btnMaterial = new THREE.MeshBasicMaterial({ map: btnTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.85 });
     goHomeButton = new THREE.Mesh(btnGeometry, btnMaterial);
-    goHomeButton.position.set(-300, 100, 0);
+    goHomeButton.position.set(-320, 100, 0);
+    if (goHomeButton) goHomeButton.lookAt(camera.position);
     goHomeButton.name = 'goHomeBtn';
     scene.add(goHomeButton);
 }
@@ -233,6 +218,44 @@ function removeGoHomeButton() {
         scene.remove(goHomeButton);
         goHomeButton = null;
     }
+}
+
+let infoButton = null;
+
+function addInfoButton() {
+    if (infoButton) scene.remove(infoButton);
+
+    const btnWidth = 60, btnHeight = 60;
+    const btnGeometry = new THREE.PlaneGeometry(btnWidth, btnHeight);
+
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load('img/IconInfo.png', function (texture) {
+        const btnMaterial = new THREE.MeshBasicMaterial({
+            map: texture,
+            side: THREE.DoubleSide,
+            transparent: true // allows image with alpha channel (e.g. PNG transparency)
+        });
+
+        infoButton = new THREE.Mesh(btnGeometry, btnMaterial);
+        infoButton.position.set(-80, 100, -400);
+        infoButton.name = 'infoBtn';
+        scene.add(infoButton);
+    });
+}
+
+function removeInfoButton() {
+    if (infoButton) {
+        scene.remove(infoButton);
+        infoButton = null;
+    }
+}
+
+// Add overlay close logic
+const closeBtn = document.getElementById('closeOverlayBtn');
+if (closeBtn) {
+    closeBtn.onclick = function() {
+        document.getElementById('imageOverlay').style.display = 'none';
+    };
 }
 
 // Add raycasting for 3D buttons and shelter icon
@@ -247,7 +270,8 @@ function setupRaycasting() {
             scene.getObjectByName('rightBtn3D'),
             scene.getObjectByName('shelterIcon'),
             trainingButton,
-            goHomeButton
+            goHomeButton,
+            infoButton
         ].filter(Boolean);
         raycaster.setFromCamera(mouse, camera);
         const intersects = raycaster.intersectObjects(clickableObjects);
@@ -278,7 +302,7 @@ function setupRaycasting() {
                         trainingAudio.currentTime = 0;
                     }
                     if (!window.trainingAudio3) {
-                        window.trainingAudio3 = new Audio('audio/audio3.wav');
+                        window.trainingAudio3 = new Audio('audio/audio3.mp3');
                         window.trainingAudio3.loop = false;
                     }
                     window.trainingAudio3.currentTime = 0;
@@ -299,6 +323,8 @@ function setupRaycasting() {
                     document.getElementById('viewer').style.display = 'block';
                     show360('img/StreetViewChoiceStart.jpg');
                 };
+            } else if (intersects[0].object.name === 'infoBtn') {
+                document.getElementById('imageOverlay').style.display = 'flex';
             }
         }
     });
@@ -309,6 +335,14 @@ function show360(imagePath, transition) {
     viewer.style.display = 'block';
     btns.style.display = (imagePath.includes('Start')) ? 'flex' : 'none';
     removeGoHomeButton();
+    removeInfoButton();
+    // Add infoButton for the relevant images
+    if (
+        imagePath === 'img/trainingCenter.png' ||
+        imagePath === 'img/bombShelterInside.png'
+    ) {
+        addInfoButton();
+    }
 
     // Handle audio for training center
     let skipTextAndButton = false;
@@ -318,7 +352,7 @@ function show360(imagePath, transition) {
     if (imagePath === 'img/trainingCenter.png') {
         if (!skipTextAndButton) {
             if (!trainingAudio) {
-                trainingAudio = new Audio('audio/audio1.wav');
+                trainingAudio = new Audio('audio/audio1.mp3');
                 trainingAudio.loop = false;
             }
             trainingAudio.currentTime = 0;
@@ -333,6 +367,21 @@ function show360(imagePath, transition) {
             trainingAudio.currentTime = 0;
         }
         removeTrainingTextsAndButton();
+    }
+
+    // Handle audio for bomb shelter
+    if (imagePath === 'img/bombShelterInside.png') {
+        if (!bombShelterAudio) {
+            bombShelterAudio = new Audio('audio/audio1Schuilkelder.mp3');
+            bombShelterAudio.loop = false;
+        }
+        bombShelterAudio.currentTime = 0;
+        bombShelterAudio.play();
+    } else {
+        if (bombShelterAudio && !bombShelterAudio.paused) {
+            bombShelterAudio.pause();
+            bombShelterAudio.currentTime = 0;
+        }
     }
 
     // Remove old sphere after transition
