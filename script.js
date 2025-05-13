@@ -302,16 +302,27 @@ function open360Viewer(location) {
                     if (imagePath.includes('Right') || imagePath.includes('Left')) {
                         const loader = new THREE.TextureLoader();
                         loader.load('img/iconShelter.png', function(texture) {
-                            const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+                            const material = new THREE.SpriteMaterial({ 
+                                map: texture, 
+                                transparent: true,
+                                opacity: 1.0  // Ensure full opacity
+                            });
                             const sprite = new THREE.Sprite(material);
                             if (imagePath.includes('Right')) {
-                                sprite.position.set(300, 40, -100); // Position for Right scene
+                                sprite.position.set(100, -30, -400); // Closer to camera
                             } else {
-                                sprite.position.set(-300, 40, -100); // Position for Left scene
+                                sprite.position.set(-100, 0, -200); // Closer to camera
                             }
-                            sprite.scale.set(30, 30, 1);
+                            sprite.scale.set(50, 50, 1); // Larger scale
                             sprite.name = 'shelterIcon';
                             scene.add(sprite);
+                            
+                            // Add debug info
+                            console.log('Shelter icon added:', {
+                                position: sprite.position,
+                                scale: sprite.scale,
+                                visible: sprite.visible
+                            });
                         });
                     }
                 }
