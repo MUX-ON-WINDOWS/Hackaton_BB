@@ -67,6 +67,75 @@ let currentScene = 'start';
 const viewer = document.getElementById('viewer');
 const btns = document.getElementById('choice-btns');
 
+// Audio element for training center
+let trainingAudio = null;
+
+// Font loader for 3D text
+const fontLoader = new THREE.FontLoader();
+let trainingTextMeshes = [];
+let trainingButton = null;
+let fontLoaded = false;
+let loadedFont = null;
+fontLoader.load('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json', function(font) {
+    loadedFont = font;
+    fontLoaded = true;
+});
+
+function addTrainingTextsAndButton() {
+    if (!fontLoaded) {
+        setTimeout(addTrainingTextsAndButton, 100); // Wait for font
+        return;
+    }
+    // Remove old if any
+    trainingTextMeshes.forEach(mesh => scene.remove(mesh));
+    trainingTextMeshes = [];
+    if (trainingButton) scene.remove(trainingButton); trainingButton = null;
+    // Add 3 text blocks
+    const texts = [
+        { text: 'Aantal drones per dag', position: [-100, 100, -470] },
+        { text: '80%', position: [-200, 80, -400] }
+    ];
+    texts.forEach((t, i) => {
+        const textGeo = new THREE.TextGeometry(t.text, {
+            font: loadedFont,
+            size: 18,
+            height: 2,
+            curveSegments: 40
+        });
+        const textMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        const textMesh = new THREE.Mesh(textGeo, textMat);
+        textMesh.position.set(...t.position);
+        textMesh.name = `trainingText${i+1}`;
+        scene.add(textMesh);
+        trainingTextMeshes.push(textMesh);
+    });
+    // Add 3D button (plane with text)
+    const btnWidth = 300, btnHeight = 400;
+    const btnGeometry = new THREE.PlaneGeometry(btnWidth, btnHeight);
+    const btnCanvas = document.createElement('canvas');
+    btnCanvas.width = 256; btnCanvas.height = 64;
+    const ctx = btnCanvas.getContext('2d');
+    // ctx.fillStyle = '#2c3e50';
+    ctx.fillRect(0, 0, btnCanvas.width, btnCanvas.height);
+    // ctx.font = '32px Arial';
+    // ctx.fillStyle = 'white';
+    // ctx.textAlign = 'center';
+    // ctx.textBaseline = 'middle';
+    ctx.fillText('Continue', btnCanvas.width/2, btnCanvas.height/2);
+    const btnTexture = new THREE.CanvasTexture(btnCanvas);
+    const btnMaterial = new THREE.MeshBasicMaterial({ map: btnTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+    trainingButton = new THREE.Mesh(btnGeometry, btnMaterial);
+    trainingButton.position.set(-300, -300, 0);
+    trainingButton.name = 'trainingContinueBtn';
+    scene.add(trainingButton);
+}
+
+function removeTrainingTextsAndButton() {
+    trainingTextMeshes.forEach(mesh => scene.remove(mesh));
+    trainingTextMeshes = [];
+    if (trainingButton) scene.remove(trainingButton); trainingButton = null;
+}
+
 function add3DButtonsAndShelter(imagePath) {
     // Remove old buttons/icons if they exist
     if (scene.getObjectByName('leftBtn3D')) scene.remove(scene.getObjectByName('leftBtn3D'));
@@ -135,6 +204,37 @@ function add3DButtonsAndShelter(imagePath) {
     }
 }
 
+let goHomeButton = null;
+
+function addGoHomeButton() {
+    if (goHomeButton) scene.remove(goHomeButton);
+    const btnWidth = 120, btnHeight = 40;
+    const btnGeometry = new THREE.PlaneGeometry(btnWidth, btnHeight);
+    const btnCanvas = document.createElement('canvas');
+    btnCanvas.width = 256; btnCanvas.height = 64;
+    const ctx = btnCanvas.getContext('2d');
+    ctx.fillStyle = 'rgba(44,62,80,0.7)';
+    ctx.fillRect(0, 0, btnCanvas.width, btnCanvas.height);
+    ctx.font = '32px Arial';
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Ga naar huis', btnCanvas.width/2, btnCanvas.height/2);
+    const btnTexture = new THREE.CanvasTexture(btnCanvas);
+    const btnMaterial = new THREE.MeshBasicMaterial({ map: btnTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.85 });
+    goHomeButton = new THREE.Mesh(btnGeometry, btnMaterial);
+    goHomeButton.position.set(-300, 100, 0);
+    goHomeButton.name = 'goHomeBtn';
+    scene.add(goHomeButton);
+}
+
+function removeGoHomeButton() {
+    if (goHomeButton) {
+        scene.remove(goHomeButton);
+        goHomeButton = null;
+    }
+}
+
 // Add raycasting for 3D buttons and shelter icon
 function setupRaycasting() {
     const raycaster = new THREE.Raycaster();
@@ -145,7 +245,9 @@ function setupRaycasting() {
         const clickableObjects = [
             scene.getObjectByName('leftBtn3D'),
             scene.getObjectByName('rightBtn3D'),
-            scene.getObjectByName('shelterIcon')
+            scene.getObjectByName('shelterIcon'),
+            trainingButton,
+            goHomeButton
         ].filter(Boolean);
         raycaster.setFromCamera(mouse, camera);
         const intersects = raycaster.intersectObjects(clickableObjects);
@@ -156,6 +258,47 @@ function setupRaycasting() {
                 show360('img/StreetViewChoiceRight.jpg', true);
             } else if (intersects[0].object.name === 'shelterIcon') {
                 show360('img/bombShelterInside.png', true);
+            } else if (intersects[0].object.name === 'trainingContinueBtn') {
+                console.log('Continue button clicked!');
+                const videoElem = document.getElementById('intro-video');
+                videoElem.src = 'video/droneGameplay.mp4';
+                videoElem.currentTime = 0;
+                videoElem.play();
+                document.getElementById('video-container').style.display = 'flex';
+                document.getElementById('viewer').style.display = 'none';
+                videoElem.onended = function() {
+                    document.getElementById('video-container').style.display = 'none';
+                    document.getElementById('viewer').style.display = 'block';
+                    // Open trainingCenter.png with NO text or button, and play audio3.mp4
+                    removeTrainingTextsAndButton();
+                    show360('img/trainingCenter.png');
+                    // Play audio3.mp4
+                    if (trainingAudio && !trainingAudio.paused) {
+                        trainingAudio.pause();
+                        trainingAudio.currentTime = 0;
+                    }
+                    if (!window.trainingAudio3) {
+                        window.trainingAudio3 = new Audio('audio/audio3.wav');
+                        window.trainingAudio3.loop = false;
+                    }
+                    window.trainingAudio3.currentTime = 0;
+                    window.trainingAudio3.play();
+                    window.trainingAudio3.onended = function() {
+                        addGoHomeButton();
+                    };
+                };
+            } else if (intersects[0].object.name === 'goHomeBtn') {
+                const videoElem = document.getElementById('intro-video');
+                videoElem.src = 'video/loopVideo.mp4';
+                videoElem.currentTime = 0;
+                videoElem.play();
+                document.getElementById('video-container').style.display = 'flex';
+                document.getElementById('viewer').style.display = 'none';
+                videoElem.onended = function() {
+                    document.getElementById('video-container').style.display = 'none';
+                    document.getElementById('viewer').style.display = 'block';
+                    show360('img/StreetViewChoiceStart.jpg');
+                };
             }
         }
     });
@@ -165,6 +308,33 @@ setupRaycasting();
 function show360(imagePath, transition) {
     viewer.style.display = 'block';
     btns.style.display = (imagePath.includes('Start')) ? 'flex' : 'none';
+    removeGoHomeButton();
+
+    // Handle audio for training center
+    let skipTextAndButton = false;
+    if (window.trainingAudio3 && !window.trainingAudio3.paused && imagePath === 'img/trainingCenter.png') {
+        skipTextAndButton = true;
+    }
+    if (imagePath === 'img/trainingCenter.png') {
+        if (!skipTextAndButton) {
+            if (!trainingAudio) {
+                trainingAudio = new Audio('audio/audio1.wav');
+                trainingAudio.loop = false;
+            }
+            trainingAudio.currentTime = 0;
+            trainingAudio.play();
+            addTrainingTextsAndButton();
+        } else {
+            removeTrainingTextsAndButton();
+        }
+    } else {
+        if (trainingAudio && !trainingAudio.paused) {
+            trainingAudio.pause();
+            trainingAudio.currentTime = 0;
+        }
+        removeTrainingTextsAndButton();
+    }
+
     // Remove old sphere after transition
     function loadNewSphere() {
         if (sphere) scene.remove(sphere);
@@ -254,6 +424,7 @@ function show360(imagePath, transition) {
         const rightBtn3D = scene.getObjectByName('rightBtn3D');
         if (leftBtn3D) leftBtn3D.lookAt(camera.position);
         if (rightBtn3D) rightBtn3D.lookAt(camera.position);
+        if (trainingButton) trainingButton.lookAt(camera.position);
         renderer.render(scene, camera);
     }
     if (!isVRMode) animate();
@@ -289,4 +460,7 @@ window.addEventListener('message', function(event) {
             show360(location.imageUrl);
         }
     }
-}); 
+});
+
+// Start the viewer page with the 360 image 'img/trainingCenter.png' by default
+show360('img/trainingCenter.png'); 
