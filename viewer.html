@@ -67,7 +67,6 @@
         }
     </style>
     <script src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'></script>
-    <script src='https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/vr/VRButton.js'></script>
 </head>
 <body>
     <div id="video-container">
@@ -77,6 +76,96 @@
         <div id="choice-btns" style="display:none;"></div>
     </div>
     <button id="vrToggle" disabled>Enable VR</button>
+    <script>
+    // Minimal VRButton for Three.js r128+
+    var VRButton = {
+        createButton: function ( renderer ) {
+            if ( 'xr' in navigator ) {
+                const button = document.createElement( 'button' );
+                function showEnterVR( /*device*/ ) {
+                    let currentSession = null;
+                    async function onSessionStarted( session ) {
+                        session.addEventListener( 'end', onSessionEnded );
+                        await renderer.xr.setSession( session );
+                        button.textContent = 'EXIT VR';
+                        currentSession = session;
+                    }
+                    function onSessionEnded( /*event*/ ) {
+                        currentSession.removeEventListener( 'end', onSessionEnded );
+                        button.textContent = 'ENTER VR';
+                        currentSession = null;
+                    }
+                    button.style.display = '';
+                    button.style.cursor = 'pointer';
+                    button.style.left = 'calc(50% - 50px)';
+                    button.style.width = '100px';
+                    button.textContent = 'ENTER VR';
+                    button.onmouseenter = function () {
+                        button.style.opacity = '1.0';
+                    };
+                    button.onmouseleave = function () {
+                        button.style.opacity = '0.5';
+                    };
+                    button.onclick = function () {
+                        if ( currentSession === null ) {
+                            const sessionInit = { optionalFeatures: [ 'local-floor', 'bounded-floor' ] };
+                            navigator.xr.requestSession( 'immersive-vr', sessionInit ).then( onSessionStarted );
+                        } else {
+                            currentSession.end();
+                        }
+                    };
+                }
+                function disableButton() {
+                    button.style.display = '';
+                    button.style.cursor = 'auto';
+                    button.style.left = 'calc(50% - 75px)';
+                    button.style.width = '150px';
+                    button.onmouseenter = null;
+                    button.onmouseleave = null;
+                    button.onclick = null;
+                }
+                function showWebXRNotFound() {
+                    disableButton();
+                    button.textContent = 'VR NOT SUPPORTED';
+                }
+                if ( navigator.xr.isSessionSupported ) {
+                    navigator.xr.isSessionSupported( 'immersive-vr' ).then( function ( supported ) {
+                        supported ? showEnterVR() : showWebXRNotFound();
+                    } );
+                } else {
+                    showWebXRNotFound();
+                }
+                return button;
+            } else {
+                const message = document.createElement( 'a' );
+                if ( window.isSecureContext === false ) {
+                    message.href = document.location.href.replace( /^http:/, 'https:' );
+                    message.innerHTML = 'WEBXR NEEDS HTTPS'; 
+                } else {
+                    message.href = 'https://immersiveweb.dev/';
+                    message.innerHTML = 'WEBXR NOT AVAILABLE';
+                }
+                message.style.left = 'calc(50% - 90px)';
+                message.style.width = '180px';
+                message.style.textDecoration = 'none';
+                message.style.position = 'absolute';
+                message.style.bottom = '20px';
+                message.style.padding = '12px 6px';
+                message.style.border = '1px solid #fff';
+                message.style.borderRadius = '4px';
+                message.style.background = 'rgba(0,0,0,0.1)';
+                message.style.color = '#fff';
+                message.style.font = 'normal 13px sans-serif';
+                message.style.textAlign = 'center';
+                message.style.opacity = '0.5';
+                message.style.outline = 'none';
+                message.style.zIndex = '999';
+                return message;
+            }
+        }
+    };
+    window.VRButton = VRButton;
+    </script>
     <script src="viewer.js"></script>
 </body>
 </html> 

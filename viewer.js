@@ -1,13 +1,30 @@
 // VR state management
 let isVRMode = false;
-let vrRenderer = null;
-let vrScene = null;
-let vrCamera = null;
-let vrControls = null;
+let renderer, scene, camera, textureLoader;
+let sphere = null;
+let animatingTransition = false;
+let animationId = null;
 
 // Check if the page is served over HTTPS
 const isSecure = window.location.protocol === 'https:';
 const vrToggle = document.getElementById('vrToggle');
+
+// Create renderer, scene, camera ONCE
+renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.getElementById('viewer').appendChild(renderer.domElement);
+
+scene = new THREE.Scene();
+camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+textureLoader = new THREE.TextureLoader();
+
+// Add lights
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+scene.add(ambientLight);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+directionalLight.position.set(0, 1, 0);
+scene.add(directionalLight);
 
 // Enable VR button if on HTTPS
 if (isSecure) {
@@ -19,11 +36,9 @@ if (isSecure) {
 // VR Toggle button click handler
 vrToggle.addEventListener('click', () => {
     if (!isSecure) return;
-    
     isVRMode = !isVRMode;
     vrToggle.textContent = isVRMode ? 'Disable VR' : 'Enable VR';
     vrToggle.classList.toggle('active');
-    
     if (isVRMode) {
         initializeVR();
     } else {
@@ -32,63 +47,31 @@ vrToggle.addEventListener('click', () => {
 });
 
 function initializeVR() {
-    if (!vrRenderer) {
-        vrRenderer = new THREE.WebGLRenderer({ antialias: true });
-        vrRenderer.setPixelRatio(window.devicePixelRatio);
-        vrRenderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(vrRenderer.domElement);
-        
-        vrRenderer.xr.enabled = true;
-        
-        vrScene = new THREE.Scene();
-        vrCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        
-        // Add VR button
-        document.body.appendChild(VRButton.createButton(vrRenderer));
-        
-        // Add ambient light
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        vrScene.add(ambientLight);
-        
-        // Add directional light
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-        directionalLight.position.set(0, 1, 0);
-        vrScene.add(directionalLight);
-    }
-    
-    // Start VR animation loop
-    vrRenderer.setAnimationLoop(animateVR);
+    renderer.xr.enabled = true;
+    document.body.appendChild(VRButton.createButton(renderer));
+    renderer.setAnimationLoop(animateVR);
 }
 
 function cleanupVR() {
-    if (vrRenderer) {
-        vrRenderer.setAnimationLoop(null);
-        document.body.removeChild(vrRenderer.domElement);
-        vrRenderer = null;
-        vrScene = null;
-        vrCamera = null;
-        vrControls = null;
-    }
+    renderer.xr.enabled = false;
+    renderer.setAnimationLoop(null);
+    // Resume normal animation
+    animate();
 }
 
 function animateVR() {
-    if (!isVRMode) return;
-    
-    vrRenderer.render(vrScene, vrCamera);
+    renderer.render(scene, camera);
 }
 
 let currentScene = 'start';
 const viewer = document.getElementById('viewer');
 const btns = document.getElementById('choice-btns');
-let renderer, camera, scene, sphere, textureLoader;
-let animatingTransition = false;
 
 function add3DButtonsAndShelter(imagePath) {
     // Remove old buttons/icons if they exist
     if (scene.getObjectByName('leftBtn3D')) scene.remove(scene.getObjectByName('leftBtn3D'));
     if (scene.getObjectByName('rightBtn3D')) scene.remove(scene.getObjectByName('rightBtn3D'));
     if (scene.getObjectByName('shelterIcon')) scene.remove(scene.getObjectByName('shelterIcon'));
-
     // Only show left/right buttons on the 'Start' image
     if (imagePath.includes('Start')) {
         // Left button
@@ -110,7 +93,6 @@ function add3DButtonsAndShelter(imagePath) {
         leftBtn3D.position.set(200, 40, -100);
         leftBtn3D.name = 'leftBtn3D';
         scene.add(leftBtn3D);
-
         // Right button
         const canvasRight = document.createElement('canvas');
         canvasRight.width = 256;
@@ -131,7 +113,6 @@ function add3DButtonsAndShelter(imagePath) {
         rightBtn3D.name = 'rightBtn3D';
         scene.add(rightBtn3D);
     }
-
     // Only show shelter icon on Left/Right images
     if (imagePath.includes('Right') || imagePath.includes('Left')) {
         const loader = new THREE.TextureLoader();
@@ -179,20 +160,11 @@ function setupRaycasting() {
         }
     });
 }
+setupRaycasting();
 
 function show360(imagePath, transition) {
     viewer.style.display = 'block';
     btns.style.display = (imagePath.includes('Start')) ? 'flex' : 'none';
-    if (!renderer) {
-        renderer = new THREE.WebGLRenderer();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        viewer.appendChild(renderer.domElement);
-        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        scene = new THREE.Scene();
-        textureLoader = new THREE.TextureLoader();
-        setupRaycasting();
-    }
-    
     // Remove old sphere after transition
     function loadNewSphere() {
         if (sphere) scene.remove(sphere);
@@ -205,9 +177,7 @@ function show360(imagePath, transition) {
             add3DButtonsAndShelter(imagePath);
         });
     }
-    
     if (transition && sphere) {
-        // Animate the current sphere
         animatingTransition = true;
         if (!sphere.material.userData) sphere.material.userData = {};
         sphere.material.userData.blurZoom = true;
@@ -215,7 +185,6 @@ function show360(imagePath, transition) {
         function animateBlurZoom(ts) {
             if (!animStart) animStart = ts;
             let progress = Math.min((ts - animStart) / 700, 1);
-            // Animate blur and scale
             let blur = 12 * progress;
             let scale = 1 + 0.2 * progress;
             sphere.material.opacity = 1 - progress;
@@ -234,10 +203,8 @@ function show360(imagePath, transition) {
     } else {
         loadNewSphere();
     }
-    
     camera.position.z = 0.1;
     let isUserInteracting = false, onMouseDownMouseX = 0, onMouseDownMouseY = 0, lon = 0, lat = 0, onMouseDownLon = 0, onMouseDownLat = 0;
-    
     viewer.onmousedown = function(event) {
         isUserInteracting = true;
         onMouseDownMouseX = event.clientX;
@@ -245,18 +212,36 @@ function show360(imagePath, transition) {
         onMouseDownLon = lon;
         onMouseDownLat = lat;
     };
-    
     viewer.onmousemove = function(event) {
         if (isUserInteracting) {
             lon = (onMouseDownMouseX - event.clientX) * 0.1 + onMouseDownLon;
             lat = (event.clientY - onMouseDownMouseY) * 0.1 + onMouseDownLat;
         }
     };
-    
     viewer.onmouseup = function() { isUserInteracting = false; };
-    
+    // Touch controls for mobile
+    let lastTouchX = 0, lastTouchY = 0;
+    viewer.ontouchstart = function(event) {
+        if (event.touches.length === 1) {
+            isUserInteracting = true;
+            lastTouchX = event.touches[0].clientX;
+            lastTouchY = event.touches[0].clientY;
+            onMouseDownLon = lon;
+            onMouseDownLat = lat;
+        }
+    };
+    viewer.ontouchmove = function(event) {
+        if (isUserInteracting && event.touches.length === 1) {
+            lon = (lastTouchX - event.touches[0].clientX) * 0.1 + onMouseDownLon;
+            lat = (event.touches[0].clientY - lastTouchY) * 0.1 + onMouseDownLat;
+        }
+    };
+    viewer.ontouchend = function() {
+        isUserInteracting = false;
+    };
     function animate() {
-        requestAnimationFrame(animate);
+        if (isVRMode) return; // Don't run normal animation in VR
+        animationId = requestAnimationFrame(animate);
         lat = Math.max(-85, Math.min(85, lat));
         const phi = THREE.MathUtils.degToRad(90 - lat);
         const theta = THREE.MathUtils.degToRad(lon);
@@ -271,8 +256,7 @@ function show360(imagePath, transition) {
         if (rightBtn3D) rightBtn3D.lookAt(camera.position);
         renderer.render(scene, camera);
     }
-    
-    animate();
+    if (!isVRMode) animate();
 }
 
 // Video to 360 transition
