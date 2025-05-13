@@ -38,12 +38,10 @@ function initializeVR() {
         vrRenderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(vrRenderer.domElement);
         
+        vrRenderer.xr.enabled = true;
+        
         vrScene = new THREE.Scene();
         vrCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        
-        // Add VR controls
-        vrControls = new THREE.VRControls(vrCamera);
-        vrControls.standing = true;
         
         // Add VR button
         document.body.appendChild(THREE.VRButton.createButton(vrRenderer));
@@ -59,11 +57,12 @@ function initializeVR() {
     }
     
     // Start VR animation loop
-    animateVR();
+    vrRenderer.setAnimationLoop(animateVR);
 }
 
 function cleanupVR() {
     if (vrRenderer) {
+        vrRenderer.setAnimationLoop(null);
         document.body.removeChild(vrRenderer.domElement);
         vrRenderer = null;
         vrScene = null;
@@ -75,15 +74,7 @@ function cleanupVR() {
 function animateVR() {
     if (!isVRMode) return;
     
-    requestAnimationFrame(animateVR);
-    
-    if (vrControls) {
-        vrControls.update();
-    }
-    
-    if (vrRenderer && vrScene && vrCamera) {
-        vrRenderer.render(vrScene, vrCamera);
-    }
+    vrRenderer.render(vrScene, vrCamera);
 }
 
 let currentScene = 'start';
