@@ -44,7 +44,7 @@ function initializeVR() {
         vrCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         
         // Add VR button
-        document.body.appendChild(THREE.VRButton.createButton(vrRenderer));
+        document.body.appendChild(VRButton.createButton(vrRenderer));
         
         // Add ambient light
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
