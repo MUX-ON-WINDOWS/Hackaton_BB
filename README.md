@@ -1,3 +1,8 @@
+[![Three.js](https://img.shields.io/badge/Three.js-000?logo=threedotjs&logoColor=fff)](#)
+[![CSS](https://img.shields.io/badge/CSS-1572B6?logo=css3&logoColor=fff)](#)
+[![HTML](https://img.shields.io/badge/HTML-%23E34F26.svg?logo=html5&logoColor=white)](#)
+[![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=000)](#)
+
 # Interactive Ukraine Map with 360° Video Viewer
 
 An interactive web application that displays a map of Ukraine with clickable markers for Kyiv and Odesa. When clicked, each marker opens a 360° video viewer in a new tab, allowing users to explore these locations in immersive detail.
